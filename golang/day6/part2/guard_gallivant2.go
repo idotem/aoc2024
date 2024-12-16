@@ -1,16 +1,22 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 )
 
-type Position struct {
-	col       int
-	row       int
-	direction string
+type SimplePosition struct {
+	row int
+	col int
+}
+
+type DirPosition struct {
+	row int
+	col int
+	dir string
 }
 
 type Grid struct {
@@ -22,72 +28,81 @@ type Grid struct {
 	dir    string
 }
 
-func (pos *Position) Ordered() {
-
-}
-
 func (grid *Grid) checkLimits(row, col int) bool {
+	fmt.Println("checklimits(): ", row, col)
 	if row < 0 || col < 0 || row >= grid.rowLen || col >= grid.colLen {
 		return true
 	}
 	return false
 }
 
-func (grid *Grid) moveUp() bool {
+func (grid *Grid) moveUp() (SimplePosition, error) {
 	nextRow := grid.row - 1
+	fmt.Println("MoveUp: ", nextRow, " ", grid.col)
 	if grid.checkLimits(nextRow, grid.col) {
-		return false
+		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(nextRow, grid.col) {
 		grid.turn90Degrees()
-		return true
+		return SimplePosition{nextRow, grid.col}, nil
 	}
 	grid.row = nextRow
-	return true
+	grid.mat[nextRow][grid.col] = "^"
+	return SimplePosition{nextRow, grid.col}, nil
 }
 
-func (grid *Grid) moveDown() bool {
+func (grid *Grid) moveDown() (SimplePosition, error) {
+	fmt.Println("moveDown(): ", grid.row, " ", grid.col)
 	nextRow := grid.row + 1
 	if grid.checkLimits(nextRow, grid.col) {
-		return false
+		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(nextRow, grid.col) {
 		grid.turn90Degrees()
-		return true
+		return SimplePosition{nextRow, grid.col}, nil
 	}
 	grid.row = nextRow
-	return true
+	grid.mat[nextRow][grid.col] = "v"
+	return SimplePosition{nextRow, grid.col}, nil
 }
 
-func (grid *Grid) moveLeft() bool {
+func (grid *Grid) moveLeft() (SimplePosition, error) {
 	nextCol := grid.col - 1
+	fmt.Println("MoveLeft: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
-		return false
+		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(grid.row, nextCol) {
 		grid.turn90Degrees()
-		return true
+		return SimplePosition{grid.row, nextCol}, nil
 	}
 	grid.col = nextCol
-	return true
+	grid.mat[grid.row][nextCol] = "<"
+	return SimplePosition{grid.row, nextCol}, nil
 }
 
-func (grid *Grid) moveRight() bool {
+func (grid *Grid) moveRight() (SimplePosition, error) {
 	nextCol := grid.col + 1
+	fmt.Println("MoveRight: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
-		return false
+		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(grid.row, nextCol) {
 		grid.turn90Degrees()
-		return true
+		return SimplePosition{grid.row, nextCol}, nil
 	}
-	grid.col = nextCol
-	return true
+	grid.col += 1
+	grid.mat[grid.row][nextCol] = ">"
+	return SimplePosition{grid.row, nextCol}, nil
 }
 
 func getStartingPosIfPresent(cols []string) int {
 	for i, c := range cols {
+		fmt.Println(c)
+		fmt.Println(c == "^")
 		if c == "^" || c == ">" || c == "<" || c == "v" {
+			fmt.Println(c == "^")
+			fmt.Println(i)
 			return i
 		}
 	}
@@ -102,15 +117,20 @@ func (grid *Grid) checkBlockage(row, col int) bool {
 }
 
 func (grid *Grid) turn90Degrees() {
-	pos := &grid.dir
+	pos := &grid.mat[grid.row][grid.col]
+	fmt.Println("Turn90Deg", pos)
 	switch *pos {
 	case "^":
+		grid.dir = ">"
 		*pos = ">"
 	case ">":
+		grid.dir = "v"
 		*pos = "v"
 	case "v":
+		grid.dir = "<"
 		*pos = "<"
 	case "<":
+		grid.dir = "^"
 		*pos = "^"
 	default:
 		return
@@ -118,8 +138,9 @@ func (grid *Grid) turn90Degrees() {
 
 }
 
-func (grid *Grid) move() bool {
-	pos := grid.dir
+func (grid *Grid) move() (SimplePosition, error) {
+	pos := grid.mat[grid.row][grid.col]
+	fmt.Println("POS move(): ", pos)
 	switch pos {
 	case "^":
 		return grid.moveUp()
@@ -130,7 +151,7 @@ func (grid *Grid) move() bool {
 	case "<":
 		return grid.moveLeft()
 	default:
-		return false
+		return SimplePosition{}, errors.New("Invalid move for position, default switch activated")
 	}
 }
 
@@ -154,78 +175,71 @@ func main() {
 				flag = true
 			}
 		}
+		fmt.Printf("Characters: %q\n", cols)
 		mat[i] = cols
 	}
 
-	grid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow, mat[startRow][startCol]}
-	var positions []Position
-	firstFlag := true
+	grid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow, "^"}
+	fmt.Println("col start(): ", grid.col)
+	fmt.Println("row start(): ", grid.row)
+	fmt.Println("colLength start(): ", grid.colLen)
+	fmt.Println("rowLenght start(): ", grid.rowLen)
+
+	var pathPositions []SimplePosition
 	for true {
-		if firstFlag {
-			fmt.Println("FIRST")
-			firstFlag = false
-			grid.move()
-			continue
-		}
-		oldPos := Position{grid.col, grid.row, grid.dir}
-		if checkIfNewBlockageCreatesLoop(&grid) {
-			positions = append(positions, oldPos)
-		}
-		grid.col = oldPos.col
-		grid.row = oldPos.row
-		grid.dir = oldPos.direction
-		res := grid.move()
-		if res == false {
+		res, err := grid.move()
+		if err == nil {
+			fmt.Println(err)
 			break
 		}
-
+		pathPositions = append(pathPositions, res)
 	}
+	secondGrid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow, "^"}
 
-	fmt.Println("Positions: ", len(positions))
+	total := 0
+	startPos := SimplePosition{startRow, startCol}
+	for r, row := range secondGrid.mat {
+		for c, col := range row {
+			pos := SimplePosition{c, r}
+			if !positionContainedInPathPositions(pathPositions, pos) ||
+				pos == startPos || col == "#" {
+				continue
+			}
+			var alreadyPassedPos []DirPosition
+			for true {
+				if positionAlreadyPresent(alreadyPassedPos, DirPosition{secondGrid.row, secondGrid.col, secondGrid.dir}) {
+					total++
+				}
+				res, err := secondGrid.move()
+				if err == nil {
+					secondGrid.mat[secondGrid.row][secondGrid.col] = "."
+					secondGrid.mat[startRow][startCol] = "^"
+					secondGrid.col = startCol
+					secondGrid.row = startRow
+					break
+				}
+				alreadyPassedPos = append(alreadyPassedPos, DirPosition{res.row, res.col, secondGrid.dir})
+			}
+
+		}
+		fmt.Println()
+	}
+	fmt.Println("Total: ", total)
 }
 
-func checkIfNewBlockageCreatesLoop(grid *Grid) bool {
-	var otherPos []Position
-	posOfNewBlockage := addNewBlockageToGrid(grid)
-	for true {
-		newPosition := Position{grid.row, grid.col, grid.dir}
-		res := grid.move()
-		if res == false {
-			return false
-		}
-		if posOfNewBlockage == newPosition || positionAlreadyPresent(otherPos, newPosition) {
+func positionAlreadyPresent(pathPos []DirPosition, pos DirPosition) bool {
+	for _, p := range pathPos {
+		if p == pos {
 			return true
 		}
-		otherPos = append(otherPos, newPosition)
 	}
 	return false
 
 }
 
-func addNewBlockageToGrid(grid *Grid) Position {
-	position := Position{grid.row, grid.col, grid.dir}
-	// pos := &grid.dir
-	// switch *pos {
-	// case "^":
-	// 	grid.mat[grid.row-1][grid.col] = "#"
-	// case ">":
-	// 	grid.mat[grid.row][grid.col+1] = "#"
-	// case "v":
-	// 	grid.mat[grid.row+1][grid.col] = "#"
-	// case "<":
-	// 	grid.mat[grid.row][grid.col-1] = "#"
-	// default:
-
-	// }
-	grid.turn90Degrees()
-	return position
-}
-
-func positionAlreadyPresent(positions []Position, position Position) bool {
-	// fmt.Println(positions)
-	// fmt.Println(position)
-	for _, pos := range positions {
-		if pos == position {
+func positionContainedInPathPositions(pathPos []SimplePosition, pos SimplePosition) bool {
+	for _, p := range pathPos {
+		if p == pos {
 			return true
 		}
 	}
