@@ -16,7 +16,6 @@ type Grid struct {
 }
 
 func (grid *Grid) checkLimits(row, col int) bool {
-	fmt.Println("checklimits(): ", row, col)
 	if row < 0 || col < 0 || row >= grid.rowLen || col >= grid.colLen {
 		return true
 	}
@@ -25,7 +24,6 @@ func (grid *Grid) checkLimits(row, col int) bool {
 
 func (grid *Grid) moveUp() bool {
 	nextRow := grid.row - 1
-	fmt.Println("MoveUp: ", nextRow, " ", grid.col)
 	if grid.checkLimits(nextRow, grid.col) {
 		grid.mat[grid.row][grid.col] = "X"
 		return false
@@ -41,7 +39,6 @@ func (grid *Grid) moveUp() bool {
 }
 
 func (grid *Grid) moveDown() bool {
-	fmt.Println("moveDown(): ", grid.row, " ", grid.col)
 	nextRow := grid.row + 1
 	if grid.checkLimits(nextRow, grid.col) {
 		grid.mat[grid.row][grid.col] = "X"
@@ -59,7 +56,6 @@ func (grid *Grid) moveDown() bool {
 
 func (grid *Grid) moveLeft() bool {
 	nextCol := grid.col - 1
-	fmt.Println("MoveLeft: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
 		grid.mat[grid.row][grid.col] = "X"
 		return false
@@ -76,7 +72,6 @@ func (grid *Grid) moveLeft() bool {
 
 func (grid *Grid) moveRight() bool {
 	nextCol := grid.col + 1
-	fmt.Println("MoveRight: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
 		grid.mat[grid.row][grid.col] = "X"
 		return false
@@ -93,11 +88,7 @@ func (grid *Grid) moveRight() bool {
 
 func getStartingPosIfPresent(cols []string) int {
 	for i, c := range cols {
-		fmt.Println(c)
-		fmt.Println(c == "^")
 		if c == "^" || c == ">" || c == "<" || c == "v" {
-			fmt.Println(c == "^")
-			fmt.Println(i)
 			return i
 		}
 	}
@@ -113,7 +104,6 @@ func (grid *Grid) checkBlockage(row, col int) bool {
 
 func (grid *Grid) turn90Degrees() {
 	pos := &grid.mat[grid.row][grid.col]
-	fmt.Println("Turn90Deg", pos)
 	switch *pos {
 	case "^":
 		*pos = ">"
@@ -126,12 +116,10 @@ func (grid *Grid) turn90Degrees() {
 	default:
 		return
 	}
-
 }
 
 func (grid *Grid) move() bool {
 	pos := grid.mat[grid.row][grid.col]
-	fmt.Println("POS move(): ", pos)
 	switch pos {
 	case "^":
 		return grid.moveUp()
@@ -170,7 +158,7 @@ func main() {
 		mat[i] = cols
 	}
 
-	grid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow}
+	grid := Grid{mat, len(rows) - 1, len(rows[0]), startCol, startRow}
 	fmt.Println("col start(): ", grid.col)
 	fmt.Println("row start(): ", grid.row)
 	fmt.Println("colLength start(): ", grid.colLen)
@@ -178,7 +166,6 @@ func main() {
 
 	for true {
 		res := grid.move()
-		fmt.Println(res)
 		if res == false {
 			break
 		}
@@ -187,12 +174,11 @@ func main() {
 	total := 0
 	for _, row := range grid.mat {
 		for _, col := range row {
-			fmt.Print(col)
 			if col == "X" {
 				total++
 			}
 		}
-		fmt.Println()
 	}
-	fmt.Println("Total: ", total)
+
+	fmt.Println("Total:", total)
 }
