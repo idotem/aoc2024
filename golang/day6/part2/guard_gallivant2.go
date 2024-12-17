@@ -29,7 +29,6 @@ type Grid struct {
 }
 
 func (grid *Grid) checkLimits(row, col int) bool {
-	fmt.Println("checklimits(): ", row, col)
 	if row < 0 || col < 0 || row >= grid.rowLen || col >= grid.colLen {
 		return true
 	}
@@ -37,60 +36,68 @@ func (grid *Grid) checkLimits(row, col int) bool {
 }
 
 func (grid *Grid) moveUp() (SimplePosition, error) {
+	grid.dir = "^"
 	nextRow := grid.row - 1
-	fmt.Println("MoveUp: ", nextRow, " ", grid.col)
 	if grid.checkLimits(nextRow, grid.col) {
+		grid.mat[grid.row][grid.col] = "."
 		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(nextRow, grid.col) {
 		grid.turn90Degrees()
-		return SimplePosition{nextRow, grid.col}, nil
+		return SimplePosition{grid.row, grid.col}, nil
 	}
+	grid.mat[grid.row][grid.col] = "."
 	grid.row = nextRow
 	grid.mat[nextRow][grid.col] = "^"
 	return SimplePosition{nextRow, grid.col}, nil
 }
 
 func (grid *Grid) moveDown() (SimplePosition, error) {
-	fmt.Println("moveDown(): ", grid.row, " ", grid.col)
+	grid.dir = "v"
 	nextRow := grid.row + 1
 	if grid.checkLimits(nextRow, grid.col) {
+		grid.mat[grid.row][grid.col] = "."
 		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(nextRow, grid.col) {
 		grid.turn90Degrees()
-		return SimplePosition{nextRow, grid.col}, nil
+		return SimplePosition{grid.row, grid.col}, nil
 	}
+	grid.mat[grid.row][grid.col] = "."
 	grid.row = nextRow
 	grid.mat[nextRow][grid.col] = "v"
 	return SimplePosition{nextRow, grid.col}, nil
 }
 
 func (grid *Grid) moveLeft() (SimplePosition, error) {
+	grid.dir = "<"
 	nextCol := grid.col - 1
-	fmt.Println("MoveLeft: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
+		grid.mat[grid.row][grid.col] = "."
 		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(grid.row, nextCol) {
 		grid.turn90Degrees()
-		return SimplePosition{grid.row, nextCol}, nil
+		return SimplePosition{grid.row, grid.col}, nil
 	}
+	grid.mat[grid.row][grid.col] = "."
 	grid.col = nextCol
 	grid.mat[grid.row][nextCol] = "<"
 	return SimplePosition{grid.row, nextCol}, nil
 }
 
 func (grid *Grid) moveRight() (SimplePosition, error) {
+	grid.dir = ">"
 	nextCol := grid.col + 1
-	fmt.Println("MoveRight: ", grid.row, " col:", nextCol)
 	if grid.checkLimits(grid.row, nextCol) {
+		grid.mat[grid.row][grid.col] = "."
 		return SimplePosition{}, errors.New("Out of limits for array")
 	}
 	if grid.checkBlockage(grid.row, nextCol) {
 		grid.turn90Degrees()
-		return SimplePosition{grid.row, nextCol}, nil
+		return SimplePosition{grid.row, grid.col}, nil
 	}
+	grid.mat[grid.row][grid.col] = "."
 	grid.col += 1
 	grid.mat[grid.row][nextCol] = ">"
 	return SimplePosition{grid.row, nextCol}, nil
@@ -98,11 +105,7 @@ func (grid *Grid) moveRight() (SimplePosition, error) {
 
 func getStartingPosIfPresent(cols []string) int {
 	for i, c := range cols {
-		fmt.Println(c)
-		fmt.Println(c == "^")
 		if c == "^" || c == ">" || c == "<" || c == "v" {
-			fmt.Println(c == "^")
-			fmt.Println(i)
 			return i
 		}
 	}
@@ -118,7 +121,6 @@ func (grid *Grid) checkBlockage(row, col int) bool {
 
 func (grid *Grid) turn90Degrees() {
 	pos := &grid.mat[grid.row][grid.col]
-	fmt.Println("Turn90Deg", pos)
 	switch *pos {
 	case "^":
 		grid.dir = ">"
@@ -135,12 +137,10 @@ func (grid *Grid) turn90Degrees() {
 	default:
 		return
 	}
-
 }
 
 func (grid *Grid) move() (SimplePosition, error) {
 	pos := grid.mat[grid.row][grid.col]
-	fmt.Println("POS move(): ", pos)
 	switch pos {
 	case "^":
 		return grid.moveUp()
@@ -175,56 +175,73 @@ func main() {
 				flag = true
 			}
 		}
-		fmt.Printf("Characters: %q\n", cols)
 		mat[i] = cols
 	}
 
-	grid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow, "^"}
-	fmt.Println("col start(): ", grid.col)
-	fmt.Println("row start(): ", grid.row)
-	fmt.Println("colLength start(): ", grid.colLen)
-	fmt.Println("rowLenght start(): ", grid.rowLen)
+	grid := Grid{mat, len(rows) - 1, len(rows[0]), startCol, startRow, "^"}
 
-	var pathPositions []SimplePosition
+	var positionsInPath []SimplePosition
 	for true {
 		res, err := grid.move()
-		if err == nil {
-			fmt.Println(err)
+		if err != nil {
 			break
 		}
-		pathPositions = append(pathPositions, res)
+		positionsInPath = append(positionsInPath, res)
 	}
-	secondGrid := Grid{mat, len(rows), len(rows[0]) - 1, startCol, startRow, "^"}
+
+	mat[startRow][startCol] = "^"
+	secondGrid := Grid{mat, len(rows) - 1, len(rows[0]), startCol, startRow, "^"}
 
 	total := 0
 	startPos := SimplePosition{startRow, startCol}
 	for r, row := range secondGrid.mat {
 		for c, col := range row {
-			pos := SimplePosition{c, r}
-			if !positionContainedInPathPositions(pathPositions, pos) ||
-				pos == startPos || col == "#" {
+			pos := SimplePosition{r, c}
+			if !positionContainedInPathPositions(positionsInPath, pos) ||
+				startPos == pos || col == "#" {
 				continue
 			}
 			var alreadyPassedPos []DirPosition
+			alreadyPassedPos = append(
+				alreadyPassedPos,
+				DirPosition{secondGrid.row, secondGrid.col, secondGrid.dir},
+			)
+			res, err := secondGrid.move()
+			if err != nil {
+				continue
+			}
+			secondGrid.mat[r][c] = "#"
 			for true {
-				if positionAlreadyPresent(alreadyPassedPos, DirPosition{secondGrid.row, secondGrid.col, secondGrid.dir}) {
-					total++
-				}
-				res, err := secondGrid.move()
-				if err == nil {
+				if err != nil {
 					secondGrid.mat[secondGrid.row][secondGrid.col] = "."
-					secondGrid.mat[startRow][startCol] = "^"
-					secondGrid.col = startCol
-					secondGrid.row = startRow
+					secondGrid.mat[startPos.row][startPos.col] = "^"
+					secondGrid.dir = "^"
+					secondGrid.col = startPos.col
+					secondGrid.row = startPos.row
 					break
 				}
-				alreadyPassedPos = append(alreadyPassedPos, DirPosition{res.row, res.col, secondGrid.dir})
+				if positionAlreadyPresent(
+					alreadyPassedPos,
+					DirPosition{res.row, res.col, secondGrid.dir},
+				) {
+					total++
+					secondGrid.mat[secondGrid.row][secondGrid.col] = "."
+					secondGrid.mat[startPos.row][startPos.col] = "^"
+					secondGrid.dir = "^"
+					secondGrid.col = startPos.col
+					secondGrid.row = startPos.row
+					break
+				}
+				alreadyPassedPos = append(
+					alreadyPassedPos,
+					DirPosition{res.row, res.col, secondGrid.dir},
+				)
+				res, err = secondGrid.move()
 			}
-
+			secondGrid.mat[r][c] = "."
 		}
-		fmt.Println()
 	}
-	fmt.Println("Total: ", total)
+	fmt.Println("Total :", total)
 }
 
 func positionAlreadyPresent(pathPos []DirPosition, pos DirPosition) bool {
@@ -234,7 +251,6 @@ func positionAlreadyPresent(pathPos []DirPosition, pos DirPosition) bool {
 		}
 	}
 	return false
-
 }
 
 func positionContainedInPathPositions(pathPos []SimplePosition, pos SimplePosition) bool {
